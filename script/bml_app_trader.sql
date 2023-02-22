@@ -16,7 +16,6 @@ FROM play_store_apps
 UNION ALL
 SELECT name, CAST(price AS money)AS price, rating, primary_genre, content_rating, CAST(review_count AS integer)AS review_count
 FROM app_store_apps
-ORDER BY rating, asc
 --Original script above--now on to filtering
 SELECT genres, COUNT(*) AS genre_count
 FROM (
@@ -31,4 +30,15 @@ FROM (
 ) combined_data
 GROUP BY genres
 ORDER BY genre_count DESC;
---Genre Count--
+--Genre Count--Games, Entertainment, Education, tools, productivity
+SELECT name, CAST(price AS money) AS price, rating, genres, content_rating, review_count 
+FROM play_store_apps
+UNION ALL
+SELECT name, CAST(price AS money)AS price, rating, primary_genre, content_rating, CAST(review_count AS integer)AS review_count
+FROM app_store_apps
+ORDER BY rating DESC
+---Above is all Data Examination efforts--
+SELECT p.name, CAST(p.price AS money) AS price, p.rating, p.genres, p.content_rating, p.review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name;
+
