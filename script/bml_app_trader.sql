@@ -57,9 +57,65 @@ SELECT 'app store' AS store, a.name, CAST(a.price AS money) AS price, a.rating
 FROM app_store_apps a
 WHERE rating IS NOT NULL
 ORDER BY rating DESC, price DESC;
-
-
-
-
-
-
+-----this is the basic union-----
+SELECT 'play store' AS store, p.name, CAST(p.price AS money) AS price, p.rating
+FROM play_store_apps p
+WHERE rating IS NOT NULL AND NOT EXISTS (
+  SELECT 1
+  FROM app_store_apps a
+  WHERE a.name = p.name
+)
+UNION
+SELECT 'app store' AS store, a.name, CAST(a.price AS money) AS price, a.rating
+FROM app_store_apps a
+WHERE rating IS NOT NULL
+ORDER BY rating DESC, price DESC;
+------------union is not working for me on this project so I am going back the first table I created---------------
+SELECT p.name, CAST(p.price AS money) AS price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY MAX(p.review_count) DESC;
+--------------------baseline for beginning-------------------------------------------------------------------------
+SELECT p.name, CAST(p.price AS money) AS price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre,
+ROUND(FLOOR(CAST(p.price AS money)) * 10000, 0) AS purch_price
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY MAX(p.review_count) DESC;
+----------you cannot use floor with "as money"-----------------------
+SELECT p.name, CAST(REPLACE(p.price, '$', '') AS money) AS price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre,
+ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0) AS purch_price
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(REPLACE(p.price, '$', '') AS money), p.rating, p.genres, p.content_rating, a.primary_genre, ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0)
+ORDER BY MAX(p.review_count) DESC;
+------------after multiple attempts I added a column for purchase price--------------
+SELECT p.name, CAST(p.price AS money) AS play_store_price, a.price AS app_store_price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY MAX(p.review_count) DESC; 
+------------add column to show if the app exists in both stores-----------------------
+SELECT p.name, 
+       CAST(p.price AS money) AS play_store_price, 
+       a.price AS app_store_price, 
+       p.rating, 
+       p.genres, 
+       p.content_rating, 
+       MAX(p.review_count) AS review_count, 
+       a.primary_genre,
+       CASE 
+           WHEN EXISTS (SELECT 1 FROM play_store_apps WHERE name = p.name) AND EXISTS (SELECT 1 FROM app_store_apps WHERE name = p.name) THEN 'Y' 
+           ELSE 'N' 
+       END AS exists_in_both
+FROM play_store_apps p
+LEFT JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre, exists_in_both
+ORDER BY MAX(p.review_count) DESC;
+-------------------you overthought this one------instead you just need results for items only in both stores----
+SELECT p.name, CAST(p.price AS money) AS play_store_price, a.price AS app_store_price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY MAX(p.review_count) DESC; 
