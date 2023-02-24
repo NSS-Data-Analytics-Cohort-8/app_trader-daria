@@ -22,7 +22,20 @@ LIMIT 10;
 
 
 
-SELECT a.name AS app_store
+SELECT a.name AS apps_in_both,
+ROUND((a.rating + p.rating)/2, 1) AS both_stores_avg,
+a.price,
+p.price,
+SUM(CAST(a.review_count AS int) + p.review_count) AS total_review_count
 FROM app_store_apps AS a
 INNER JOIN play_store_apps As p
-ON a.name = p.name;
+ON a.name = p.name
+GROUP BY a.name, both_stores_avg, a.price, p.price
+ORDER BY both_stores_avg DESC,
+a.price;
+
+SELECT *
+FROM play_store_apps
+
+SELECT *
+FROM app_store_apps
