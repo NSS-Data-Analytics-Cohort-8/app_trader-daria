@@ -40,5 +40,26 @@ ORDER BY rating DESC
 ---Above is all Data Examination efforts--
 SELECT p.name, CAST(p.price AS money) AS price, p.rating, p.genres, p.content_rating, p.review_count, a.primary_genre
 FROM play_store_apps p
-INNER JOIN app_store_apps a ON p.name = a.name;
+FULL JOIN app_store_apps a ON p.name = a.name
+ORDER BY a.review_count DESC
+
+SELECT p.name, CAST(p.price AS money) AS price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY MAX(p.review_count) DESC;
+---combined-----  
+SELECT 'play store' AS store, p.name, CAST(p.price AS money) AS price, p.rating
+FROM play_store_apps p
+WHERE rating IS NOT NULL
+UNION
+SELECT 'app store' AS store, a.name, CAST(a.price AS money) AS price, a.rating
+FROM app_store_apps a
+WHERE rating IS NOT NULL
+ORDER BY rating DESC, price DESC;
+
+
+
+
+
 
