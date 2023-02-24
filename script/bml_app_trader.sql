@@ -119,3 +119,12 @@ FROM play_store_apps p
 INNER JOIN app_store_apps a ON p.name = a.name
 GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre
 ORDER BY MAX(p.review_count) DESC; 
+
+SELECT p.name, CAST(REPLACE(p.price, '$', '') AS money) AS price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre,
+ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0) AS purch_price
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(REPLACE(p.price, '$', '') AS money), p.rating, p.genres, p.content_rating, a.primary_genre, ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0)
+ORDER BY MAX(p.review_count) DESC;
+----------combined the price columns showing the greatest number between the two numbers-------------
+
