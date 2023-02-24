@@ -31,57 +31,105 @@ FROM play_store_apps
 
 -- a. App Trader will purchase apps for 10,000 times the price of the app. For apps that are priced from free up to $1.00, the purchase price is $10,000.
     
-	SELECT name, rating, CAST(price AS money) AS priced, primary_genre AS genre, CAST(review_count AS INT)
+	SELECT name, CAST(price AS money)
 	FROM app_store_apps
-	UNION ALL 
-	SELECT name, rating, CAST(price AS money) AS priced, genres AS genre, review_count
+	UNION ALL
+	SELECT name, CAST(price AS money)
 	FROM play_store_apps
-	WHERE rating IS NOT NULL
-	ORDER BY rating DESC
-	
+	ORDER BY price DESC
 	
 -- b. Apps earn $5000 per month, per app store it is on, from in-app advertising and in-app purchases, regardless of the price of the app.
     
--- - An app that costs $200,000 will make the same per month as an app that costs $1.00. 
-
--- - An app that is on both app stores will make $10,000 per month. 
-
-WITH bot AS (SELECT name, CAST(price AS money) AS priced, primary_genre AS genre
-	FROM app_store_apps
-	INTERSECT
-	SELECT name, CAST(price AS money) AS priced, genres AS genre
-	FROM play_store_apps)
-	SELECT b.name, a.rating, bot.priced, a.rating, a.review_count
-	FROM app_store_apps AS a
-	INNER JOIN bot USING(name) AS b
-	ORDER BY rating DESC, review_count ASC
-
--- c. App Trader will spend an average of $1000 per month to market an app regardless of the price of the app. If App Trader owns rights to the app in both stores, it can market the app for both stores for a single cost of $1000 per month.
-    
--- - An app that costs $200,000 and an app that costs $1.00 will both cost $1000 a month for marketing, regardless of the number of stores it is in.
-
--- d. For every half point that an app gains in rating, its projected lifespan increases by one year. In other words, an app with a rating of 0 can be expected to be in use for 1 year, an app with a rating of 1.0 can be expected to last 3 years, and an app with a rating of 4.0 can be expected to last 9 years.
-    
--- - App store ratings should be calculated by taking the average of the scores from both app stores and rounding to the nearest 0.5.
-
--- e. App Trader would prefer to work with apps that are available in both the App Store and the Play Store since they can market both for the same $1000 per month.
-
-	WITH a AS (
+	WITH ai AS (
 		SELECT name 
 		FROM app_store_apps
 		INTERSECT
 		SELECT name
 		FROM play_store_apps
 		)
-	b AS (
-		SELECT name, CAST(price AS money) AS priced, CAST(review_count AS INT), rating, primary_genre AS genre
+	SELECT ai.name, CAST(it.review_count AS int) AS app_stor_revi, ti.review_count AS play_stor_revi, SUM(CAST(it.review_count AS int)+ti.review_count)
+	FROM ai
+	INNER JOIN app_store_apps AS it USING (name)
+	INNER JOIN play_store_apps AS ti USING (name)
+	GROUP BY ai.name, it.review_count, ti.review_count
+	ORDER BY app_stor_revi DESC
+	
+	
+	WITH ai AS (
+		SELECT name 
 		FROM app_store_apps
-		UNION ALL
-		SELECT name, CAST(price AS money) AS priced, CAST(review_count AS INT), rating, genres AS genre
+		INTERSECT
+		SELECT name
 		FROM play_store_apps
 		)
-		
-		
+	SELECT ai.name, CAST(it.review_count AS int) AS app_stor_revi, ti.review_count AS play_stor_revi
+	FROM ai
+	INNER JOIN app_store_apps AS it USING (name)
+	INNER JOIN play_store_apps AS ti USING (name)
+	ORDER BY app_stor_revi DESC
+
+-- - An app that costs $200,000 will make the same per month as an app that costs $1.00. 
+
+-- - An app that is on both app stores will make $10,000 per month. 
+
+
+
+-- c. App Trader will spend an average of $1000 per month to market an app regardless of the price of the app. If App Trader owns rights to the app in both stores, it can market the app for both stores for a single cost of $1000 per month.
+    
+-- - An app that costs $200,000 and an app that costs $1.00 will both cost $1000 a month for marketing, regardless of the number of stores it is in.
+
+-- d. For every half point that an app gains in rating, its projected lifespan increases by one year. In other words, an app with a rating of 0 can be expected to be in use for 1 year, an app with a rating of 1.0 can be expected to last 3 years, and an app with a rating of 4.0 can be expected to last 9 years.
+    WITH ai AS (
+		SELECT name 
+		FROM app_store_apps
+		INTERSECT
+		SELECT name
+		FROM play_store_apps
+		)
+	SELECT ai.name, it.rating AS app_store, ti.rating AS play_store, CAST(it.review_count AS int) AS app_stor_revi, ti.review_count AS play_stor_revi,
+			CAST(it.price AS money) AS app_store_price, CAST(ti.price AS money) AS play_store_price
+	FROM ai
+	INNER JOIN app_store_apps AS it USING (name)
+	INNER JOIN play_store_apps AS ti USING (name)
+	ORDER BY play_store_price DESC
+	
+-- - App store ratings should be calculated by taking the average of the scores from both app stores and rounding to the nearest 0.5.
+
+	 WITH ai AS (
+		SELECT name 
+		FROM app_store_apps
+		INTERSECT
+		SELECT name
+		FROM play_store_apps
+		)
+	SELECT ai.name, it.rating AS app_store, ti.rating AS play_store, AVG(CAST(it.rating AS int), CAST(ti.rating AS int))
+	FROM ai
+	INNER JOIN app_store_apps AS it USING (name)
+	INNER JOIN play_store_apps AS ti USING (name)
+	GROUP BY ai.name
+
+-- e. App Trader would prefer to work with apps that are available in both the App Store and the Play Store since they can market both for the same $1000 per month.
+
+	WITH ai AS (
+		SELECT name 
+		FROM app_store_apps
+		INTERSECT
+		SELECT name
+		FROM play_store_apps
+		),
+	bi AS (
+		SELECT name, CAST(price AS money) AS priced, CAST(review_count AS INT) AS reviewed, rating, primary_genre AS genre
+		FROM app_store_apps
+		UNION 
+		SELECT name, CAST(price AS money) AS priced, CAST(review_count AS INT) AS reviewed, rating, genres AS genre
+		FROM play_store_apps
+		)
+	SELECT ai.name, AVG(rating) AS rated, bi.priced, SUM(reviewed)
+	FROM ai
+	INNER JOIN bi USING (name)
+	WHERE bi.priced = '$0'
+	GROUP BY ai.name, bi.priced
+	ORDER BY rated DESC
 
 -- #### 3. Deliverables
 
