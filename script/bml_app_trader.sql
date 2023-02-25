@@ -95,7 +95,8 @@ SELECT p.name, CAST(p.price AS money) AS play_store_price, a.price AS app_store_
 FROM play_store_apps p
 INNER JOIN app_store_apps a ON p.name = a.name
 GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre
-ORDER BY MAX(p.review_count) DESC; 
+ORDER BY MAX(p.rating) DESC, MAX(p.review_count)DESC;
+
 ------------add column to show if the app exists in both stores-----------------------
 SELECT p.name, 
        CAST(p.price AS money) AS play_store_price, 
@@ -125,6 +126,32 @@ ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0) AS purch_price
 FROM play_store_apps p
 INNER JOIN app_store_apps a ON p.name = a.name
 GROUP BY p.name, CAST(REPLACE(p.price, '$', '') AS money), p.rating, p.genres, p.content_rating, a.primary_genre, ROUND(CAST(REPLACE(p.price, '$', '') AS numeric) * 10000, 0)
-ORDER BY MAX(p.review_count) DESC;
+ORDER BY MAX(p.rating) DESC;
 ----------combined the price columns showing the greatest number between the two numbers-------------
-
+SELECT p.name, CAST(p.price AS money) AS play_store_price, a.price AS app_store_price, p.rating, p.genres, p.content_rating, MAX(p.review_count) AS review_count, a.primary_genre
+FROM play_store_apps p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, CAST(p.price AS money), a.price, p.rating, p.genres, p.content_rating, a.primary_genre
+ORDER BY p.rating DESC, MAX(p.review_count) DESC;
+-------i am not getting numerous 4.9 star rated items like my teammates-----what'sdifferent-------------
+SELECT p.name AS apps,
+       ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+       SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+       p.price AS play_store_price, 
+       a.price AS app_store_price              
+FROM play_store_apps AS p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, a.rating, p.rating, p.price, a.price
+ORDER BY avg_rating DESC;
+-----------------------final base script---------------------------------------------------------------
+SELECT p.name AS apps,
+       ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+       SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+       p.price AS play_store_price, 
+       a.price AS app_store_price,
+       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS price,
+       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price
+FROM play_store_apps AS p
+INNER JOIN app_store_apps a ON p.name = a.name
+GROUP BY p.name, a.rating, p.rating, p.price, a.price
+ORDER BY avg_rating DESC, t_review_count DESC;
