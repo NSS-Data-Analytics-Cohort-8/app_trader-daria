@@ -53,12 +53,10 @@ GROUP BY a.name, rating_avg, app_lifetime_profit, purchase_price, investment_cos
 )
 SELECT apps_in_both,
 rating_avg,
-app_lifetime_profit,
-purchase_price + investment_cost AS total_investment,
 app_lifetime_profit - (purchase_price + investment_cost) AS revenue
 FROM my_cte
-ORDER BY rating_avg DESC,
-revenue DESC;
+ORDER BY revenue DESC,
+rating_avg DESC;
 
 
 
