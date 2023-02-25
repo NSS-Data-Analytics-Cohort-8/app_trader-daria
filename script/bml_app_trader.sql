@@ -147,11 +147,49 @@ ORDER BY avg_rating DESC;
 SELECT p.name AS apps,
        ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
        SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
-       p.price AS play_store_price, 
-       a.price AS app_store_price,
-       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS price,
-       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price
+       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS best_price,
+       ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0)*10000 AS purch_price,
+	   p.genres
 FROM play_store_apps AS p
 INNER JOIN app_store_apps a ON p.name = a.name
-GROUP BY p.name, a.rating, p.rating, p.price, a.price
+GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
 ORDER BY avg_rating DESC, t_review_count DESC;
+---------------------next step-------------------------------------------------------------------------------
+SELECT apps, avg_rating, t_review_count, best_price, purch_price, genres,
+       CASE
+           WHEN avg_rating < 1.0 THEN 1
+           WHEN avg_rating >= 1.0 AND avg_rating < 4.0 THEN avg_rating * 3.0 / 2.0
+           ELSE 9
+       END AS proj_lifespan
+FROM (
+    SELECT p.name AS apps,
+           ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+           SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS best_price,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price,
+           p.genres
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
+) AS subquery
+ORDER BY avg_rating DESC, t_review_count DESC;
+--------------next step--------lifetime earnings-------------------------------------------------------------
+SELECT apps, avg_rating, t_review_count, best_price, purch_price, genres, proj_lifespan,
+       CAST(proj_lifespan * 108000 - purch_price AS money) AS net_earns
+FROM 
+		(SELECT p.name AS apps,
+           ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+           SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS best_price,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS 					purch_price,
+           p.genres,
+           CASE WHEN ROUND((a.rating + p.rating) / 2, 1) < 1.0 THEN 1
+               	WHEN ROUND((a.rating + p.rating) / 2, 1) >= 1.0 
+		 		AND ROUND((a.rating + p.rating) / 2, 1) < 4.0 THEN ROUND((a.rating + p.rating) / 2, 1) * 3.0 / 2.0
+               	ELSE 9 END AS proj_lifespan
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
+) AS subquery
+ORDER BY avg_rating DESC, t_review_count DESC;
+
