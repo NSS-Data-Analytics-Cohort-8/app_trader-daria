@@ -21,9 +21,8 @@ ORDER BY review_count DESC
 LIMIT 10;
 
 
-
+WITH my_cte AS(
 SELECT a.name AS apps_in_both,
-ROUND((a.rating + p.rating)/2, 1) AS rating_avg,
 	CASE WHEN ROUND((a.rating + p.rating)/2, 1) < 0.5 THEN 1*(10000*12)
 	WHEN ROUND((a.rating + p.rating)/2, 1) < 1.0 THEN 2*(10000*12)
 	WHEN ROUND((a.rating + p.rating)/2, 1) < 1.5 THEN 3*(10000*12)
@@ -49,10 +48,19 @@ ROUND((a.rating + p.rating)/2, 1) AS rating_avg,
 FROM app_store_apps AS a
 INNER JOIN play_store_apps As p
 ON a.name = p.name
-GROUP BY a.name, rating_avg, app_lifetime_profit, purchase_price, investment_cost
-ORDER BY rating_avg DESC,
-app_lifetime_profit DESC,
-purchase_price;
+GROUP BY a.name, app_lifetime_profit, purchase_price, investment_cost
+)
+SELECT apps_in_both,
+app_lifetime_profit,
+purchase_price + investment_cost AS total_investment,
+app_lifetime_profit - (purchase_price + investment_cost) AS revenue
+FROM my_cte
+ORDER BY revenue DESC;
+
+
+
+
+
 
 SELECT *
 FROM play_store_apps
