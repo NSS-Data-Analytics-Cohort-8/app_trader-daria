@@ -144,6 +144,18 @@ INNER JOIN app_store_apps a ON p.name = a.name
 GROUP BY p.name, a.rating, p.rating, p.price, a.price
 ORDER BY avg_rating DESC;
 -----------------------final base script---------------------------------------------------------------
+-- I need to find a way to create a new column called price which compares play_store_price to app_store_price and chooses the highest number and displays it as a whole number rounded to the nearest dollar.
+-- Next I need to add a column called purch_price
+-- which shows output of price times 10K
+
+-- next I want to add an earnings column
+-- ADD
+-- proj_lifespan column (
+-- net_annual_earns 
+-- proj_lifespan*earnings
+-- monthly earnings 10K-advertising=9K
+-- MINUS purch_price
+
 SELECT p.name AS apps,
        ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
        SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
@@ -175,7 +187,7 @@ FROM (
 ORDER BY avg_rating DESC, t_review_count DESC;
 --------------next step--------lifetime earnings-------------------------------------------------------------
 SELECT apps, avg_rating, t_review_count, best_price, purch_price, genres, proj_lifespan,
-       CAST(proj_lifespan * 108000 - purch_price AS money) AS net_earns
+       proj_lifespan * 108000 - purch_price AS net_earns
 FROM 
 		(SELECT p.name AS apps,
            ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
@@ -192,4 +204,80 @@ FROM
     GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
 ) AS subquery
 ORDER BY avg_rating DESC, t_review_count DESC;
-
+----------------------reorder by net_earns------------------------------------------------------------------
+SELECT apps, CAST(proj_lifespan * 9000 - purch_price AS money) AS net_earns, avg_rating, proj_lifespan, genres, best_price, purch_price, t_review_count
+FROM (
+    SELECT p.name AS apps,
+           ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+           SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS best_price,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price,
+           p.genres,
+    CASE
+    WHEN ROUND((a.rating + p.rating) / 2, 1) < 1.0 THEN 1
+    WHEN ROUND((a.rating + p.rating) / 2, 1) < 4.0 THEN 
+    CAST((ROUND((a.rating + p.rating) / 2, 1) * 3.0 / 2.0) AS numeric(5,2))
+    ELSE 9
+END AS proj_lifespan
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
+) AS subquery
+ORDER BY net_earns DESC;
+-------------------------------edit---------------------------------------------------------
+SELECT apps, CAST(proj_lifespan * 108000 - purch_price AS money) AS net_earns, avg_rating, proj_lifespan, genres, best_price, purch_price, t_review_count
+FROM (
+    SELECT p.name AS apps,
+           ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+           SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS best_price,
+           ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price,
+           p.genres, 2*ROUND((a.rating+p.rating)/2*2,0)/2 + 1 AS proj_lifespan
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
+) AS subquery
+ORDER BY net_earns DESC;
+----------------------WALK THROUGH--------corrected my script for proj_lifespan---------------------------
+SELECT apps, CAST(proj_lifespan * 108000 - purch_price AS money) AS net_earns, --108K represents 10K a month minus 1k is costs=9K per month times 12 months is 108K annually
+	avg_rating, --this is a.rating & p.rating rounded
+	proj_lifespan, --used Amanda's code in the selection statement
+	genres, --chose to use only the play store's output after reviewing the output of both tables
+	best_price, --highest price between the two app stores returned as numeric data 
+	purch_price, --10K times every dollar of cost of the app if over a $
+	t_review_count --the total of reviews together from both stores
+	--then a subquery for the rest of this crap!------
+FROM (
+    SELECT p.name AS apps,
+  	ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+    SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+    ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) AS 	
+best_price,---there is a shortcut you can use for cast as ::numeric
+	ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), CAST(a.price AS numeric)), 0) * 10000 AS purch_price,
+	p.genres, 2*ROUND((a.rating+p.rating)/2*2,0)/2 + 1 AS proj_lifespan--the peren part is getting the average, the rounding to the next half--and that zero is rounding to the whole number
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres
+) AS subquery
+ORDER BY net_earns DESC;--last change I made to script as I was sorting on other factors until the end
+--------------------final clean script------------------------------------------------------
+SELECT apps, CAST(proj_lifespan * 108000 - purch_price AS money) AS net_earns, 
+	avg_rating,
+	proj_lifespan,
+	genres,
+	best_price,
+	purch_price,
+	t_review_count
+FROM 
+	(SELECT p.name AS apps,
+  	ROUND((a.rating + p.rating) / 2, 1) AS avg_rating,
+    SUM(CAST(a.review_count AS int) + p.review_count) AS t_review_count,
+    ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), 
+	CAST(a.price AS numeric)), 0) AS best_price,
+	ROUND(GREATEST(CAST(REPLACE(p.price, '$', '') AS numeric), 
+	CAST(a.price AS numeric)), 0) * 10000 AS purch_price,
+	p.genres, 2*ROUND((a.rating+p.rating)/2*2,0)/2 + 1 AS proj_lifespan
+    FROM play_store_apps AS p
+    INNER JOIN app_store_apps a ON p.name = a.name
+    GROUP BY p.name, a.rating, p.rating, p.price, a.price, p.genres ) AS subquery
+	ORDER BY net_earns DESC;
