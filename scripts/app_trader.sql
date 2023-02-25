@@ -52,11 +52,11 @@ ON a.name = p.name
 GROUP BY a.name, rating_avg, app_lifetime_profit, purchase_price, investment_cost
 )
 SELECT apps_in_both,
-rating_avg,
 app_lifetime_profit - (purchase_price + investment_cost) AS revenue
 FROM my_cte
 ORDER BY revenue DESC,
-rating_avg DESC;
+rating_avg DESC
+LIMIT 10;
 
 
 
